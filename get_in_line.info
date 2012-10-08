@@ -1,0 +1,5 @@
+name = "Get In Line"
+package = "Artful Robot"
+description = "Provides text filter to bring a field into the body of a page"
+core = 7.x
+files[] = get_in_line.module

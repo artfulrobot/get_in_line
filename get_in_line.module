@@ -1,0 +1,70 @@
+<?php // vim: ft=php
+/**
+  * @file Get In Line module
+  */
+
+//function get_in_line_process_page(&$variables)/*{{{*/
+/**
+ * implements hook_process_HOOK
+ */
+function get_in_line_process_page(&$variables)
+{
+	// this seems to get called with "page not found" when
+	// a url like /node/123/edit is requested, which has no node 
+	if (!isset($variables['node'])) return;
+
+	GetInLine::go( $variables, $variables['node']->nid);
+}/*}}}*/
+//class GetInLine {{{
+/**
+ * takes the main page content and substitutes in 'inline:field_name:N' for the field's html.
+ * where N is the index (from 1) of the field. So inline:image:2 would be the 2nd image that exists as part of this page.
+ *
+  */
+class GetInLine
+{
+	static protected $variables;
+	static protected $nid;
+	static protected $node;
+	static public function go( &$variables, $nid)
+	{
+		self::$variables = &$variables;
+		self::$nid = $nid;
+		self::$node = $variables['node'];
+
+		$output = &$variables['page']['content']['system_main']['nodes'][$nid]['body'][0]['#markup'];
+		$output = preg_replace_callback( '/\binline:(\w+)(?::(\d)+)?\b/', 
+			array( 'GetInLine', 'callback'), $output);
+	}
+	public static function callback($matches)
+	{
+		$field_name = $matches[1];
+		if (!isset(self::$node->$field_name)) $field_name='field_' . $field_name;
+
+		if (!isset(self::$node->$field_name))
+			return "<div style='background-color:red;padding:8px;' >$field_name not found</div>";
+
+		if (isset($matches[2]) && $matches[2]) $delta=$matches[2]-1;
+		else $delta = 0;
+
+		$field_index = $delta +1;
+
+		$lang = self::$node->language;
+		$field = & self::$variables['page']['content']['system_main']['nodes'][self::$nid][$field_name][$delta];
+		if (!isset($field))
+			return "<div style='background-color:red;padding:8px;' >{$field_index}st/nd/rd/th $field_name not found</div>";
+
+		if (empty($field['#markup']))
+		{
+			// this has not been rendered yet. Do so now.
+			$markup = drupal_render($field);
+			$field = array('#markup'=>'');
+			return $markup;
+		}
+
+		// got ready-rendered field, let's move it.
+		$markup = $field['#markup'];
+		$field['#markup'] = '';
+		return $markup;
+	}
+}/*}}}*/
