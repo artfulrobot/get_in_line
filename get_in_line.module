@@ -38,7 +38,7 @@ class GetInLine
 		while (array_key_exists('content', self::$content)) self::$content = &self::$content['content'];
 
 		$output = &self::$content['system_main']['nodes'][$nid]['body'][0]['#markup'];
-		$output = preg_replace_callback( '/\binline:(\w+)(?::(\d)+)?\b/', 
+		$output = preg_replace_callback( '/(?:<p>)?\binline:(\w+)(?::(\d)+)?\b(?:<\/p>)?/', 
 			array( 'GetInLine', 'callback'), $output);
 	}
 	public static function callback($matches)
