@@ -3,18 +3,32 @@
   * @file Get In Line module
   */
 
-//function get_in_line_process_page(&$variables)/*{{{*/
-/**
- * implements hook_process_HOOK
+/** main doing function
+ *
+ * implements hook_entity_view_alter
+ * Nb. this hook is called once the entity has had its fields added.
+ *
  */
-function get_in_line_process_page(&$variables)
-{
-	// this seems to get called with "page not found" when
-	// a url like /node/123/edit is requested, which has no node 
-	if (!isset($variables['node'])) return;
+function get_in_line_entity_view_alter(&$data, &$context1, &$context2) {
 
-	GetInLine::go( $variables, $variables['node']->nid);
+    if (!empty($data['body'][0]['#markup'])) {
+        GetInLine::go($data);
+    }
+}
+/** Defines 'see get_in_line errors' permission 
+ *
+ * implements hook_permission
+ */
+function get_in_line_permission() /*{{{*/
+{
+  return array(
+          'see get_in_line errors' => array(
+              'title' => t('See get_in_line field name errors'),
+              'description' => t('Without this permission, inline fields will just show blank if there is an error.'),
+              ),
+          );
 }/*}}}*/
+
 //class GetInLine {{{
 /**
  * takes the main page content and substitutes in 'inline:field_name:N' for the field's html.
@@ -23,53 +37,66 @@ function get_in_line_process_page(&$variables)
   */
 class GetInLine
 {
-	static protected $variables;
-	static protected $nid;
-	static protected $node;
-	static protected $content;
-	static public function go( &$variables, $nid)
+	static protected $data;
+
+    /** main calling function 
+     */
+	static public function go( &$data)
 	{
-		self::$variables = &$variables;
-		self::$nid = $nid;
-		self::$node = $variables['node'];
-
-		// drill down to find the final content - seems to be needed for Display Suite
-		self::$content = &$variables['page']['content'];
-		while (array_key_exists('content', self::$content)) self::$content = &self::$content['content'];
-
-		$output = &self::$content['system_main']['nodes'][$nid]['body'][0]['#markup'];
-		$output = preg_replace_callback( '/(?:<p>)?\binline:(\w+)(?::(\d)+)?\b(?:<\/p>)?/', 
-			array( 'GetInLine', 'callback'), $output);
+		self::$data = &$data;
+		self::$data['body'][0]['#markup'] = preg_replace_callback( 
+            // find inline:fieldname:delta
+            // and if enclosed in <p> tags, include those too.
+            '/(?:<p>)?\binline:(\w+)(?::(\d)+)?\b(?:<\/p>)?/', 
+			array( 'GetInLine', 'callback'), 
+            self::$data['body'][0]['#markup']);
 	}
+
+    /** callback for preg_replace_callback
+     *  
+     *  returns the rendered field and removes the markup for that field.
+     */
 	public static function callback($matches)
 	{
 		$field_name = $matches[1];
-		if (!isset(self::$node->$field_name)) $field_name='field_' . $field_name;
 
-		if (!isset(self::$node->$field_name))
-			return "<div style='background-color:red;padding:8px;' >$field_name not found</div>";
+        // if this field does not exist on the node, it's an author error
+		if (!isset(self::$data['#node']->$field_name)) {
+            return self::error("$field_name not found");
+        }
+
+        // if this field is not found rendered, it's probably that
+        // this field should not display in this view mode, so remove the token.
+		if (!isset(self::$data[$field_name])) {
+            return '';
+        }
 
 		if (isset($matches[2]) && $matches[2]) $delta=$matches[2]-1;
 		else $delta = 0;
 
 		$field_index = $delta +1;
 
-		$lang = self::$node->language;
-		$field = & self::$content['system_main']['nodes'][self::$nid][$field_name][$delta];
-		if (!isset($field))
-			return "<div style='background-color:red;padding:8px;' >{$field_index}st/nd/rd/th $field_name not found</div>";
+		$field = & self::$data[$field_name][$delta];
+		if (!isset($field)) {
+            // delta not found is a author error
+			return self::error("{$field_index}st/nd/rd/th $field_name not found");
+        }
 
-		if (empty($field['#markup']))
-		{
-			// this has not been rendered yet. Do so now.
-			$markup = drupal_render($field);
-			$field = array('#markup'=>'');
-			return $markup;
-		}
-
-		// got ready-rendered field, let's move it.
+		// insert the field and remove it.
 		$markup = $field['#markup'];
 		$field['#markup'] = '';
 		return $markup;
 	}
+
+    /** Error as message and as inline field output if user has permission
+     */
+    static protected function error($message)
+    {
+        if (user_access('see get_in_line errors')) {
+            drupal_set_message("'$field_name' not found",'error');
+			return "<div style='background-color:red;padding:8px;' >$field_name not found</div>";
+        }
+        // without that permission, just hide the field.
+        return '';
+    }
 }/*}}}*/
