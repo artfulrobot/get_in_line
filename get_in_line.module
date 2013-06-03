@@ -71,10 +71,10 @@ class GetInLine
             return '';
         }
 
-		if (isset($matches[2]) && $matches[2]) $delta=$matches[2]-1;
-		else $delta = 0;
+        if (isset($matches[2]) && $matches[2]) $delta=$matches[2]-1;
+        else $delta = 0;
 
-		$field_index = $delta +1;
+        $field_index = $delta +1;
 
 		$field = & self::$data[$field_name][$delta];
 		if (!isset($field)) {
