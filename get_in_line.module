@@ -74,12 +74,11 @@ class GetInLine
         if (isset($matches[2]) && $matches[2]) $delta=$matches[2]-1;
         else $delta = 0;
 
-        $field_index = $delta +1;
-
 		$field = & self::$data[$field_name][$delta];
 		if (!isset($field)) {
             // delta not found is a author error
-			return self::error("{$field_index}st/nd/rd/th $field_name not found");
+            $ord = ($delta==0 ? "1st" : ($delta==1 ? "2nd" : ($delta==2 ? "3rd" : ($delta+1) . "th")));
+			return self::error("$ord $field_name not found");
         }
 
 		// insert the field and remove it.
@@ -93,8 +92,8 @@ class GetInLine
     static protected function error($message)
     {
         if (user_access('see get_in_line errors')) {
-            drupal_set_message("'$field_name' not found",'error');
-			return "<div style='background-color:red;padding:8px;' >$field_name not found</div>";
+            drupal_set_message($message,'error');
+			return "<div style='background-color:red;padding:8px;' >$message</div>";
         }
         // without that permission, just hide the field.
         return '';
