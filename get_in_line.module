@@ -11,9 +11,9 @@
  */
 function get_in_line_entity_view_alter(&$data, &$context1, &$context2) {
 
-    if (!empty($data['body'][0]['#markup'])) {
-        GetInLine::go($data);
-    }
+  if (!empty($data['body'][0]['#markup'])) {
+    GetInLine::go($data);
+  }
 }
 /** Defines 'see get_in_line errors' permission 
  *
@@ -22,11 +22,11 @@ function get_in_line_entity_view_alter(&$data, &$context1, &$context2) {
 function get_in_line_permission() /*{{{*/
 {
   return array(
-          'see get_in_line errors' => array(
-              'title' => t('See get_in_line field name errors'),
-              'description' => t('Without this permission, inline fields will just show blank if there is an error.'),
-              ),
-          );
+      'see get_in_line errors' => array(
+        'title' => t('See get_in_line field name errors'),
+        'description' => t('Without this permission, inline fields will just show blank if there is an error.'),
+        ),
+      );
 }/*}}}*/
 
 //class GetInLine {{{
@@ -37,65 +37,65 @@ function get_in_line_permission() /*{{{*/
   */
 class GetInLine
 {
-	static protected $data;
+  static protected $data;
 
-    /** main calling function 
-     */
-	static public function go( &$data)
-	{
-		self::$data = &$data;
-		self::$data['body'][0]['#markup'] = preg_replace_callback( 
-            // find inline:fieldname:delta
-            // and if enclosed in <p> tags, include those too.
-            '/(?:<p>)?\binline:(\w+)(?::(\d)+)?\b(?:<\/p>)?/', 
-			array( 'GetInLine', 'callback'), 
-            self::$data['body'][0]['#markup']);
-	}
+  /**
+   * Main calling function 
+   */
+  static public function go( &$data) {
+    self::$data = &$data;
+    self::$data['body'][0]['#markup'] = preg_replace_callback( 
+      // find inline:fieldname:delta
+      // and if enclosed in <p> tags, include those too.
+      '/(?:<p>)?\binline:(\w+)(?::(\d)+)?\b(?:<\/p>)?/', 
+      array( 'GetInLine', 'callback'), 
+      self::$data['body'][0]['#markup']);
+  }
 
-    /** callback for preg_replace_callback
-     *  
-     *  returns the rendered field and removes the markup for that field.
-     */
-	public static function callback($matches)
-	{
-		$field_name = $matches[1];
+  /**
+   * Callback for preg_replace_callback
+   *  
+   *  returns the rendered field and removes the markup for that field.
+   */
+  public static function callback($matches) {
+    $field_name = $matches[1];
 
-        // if this field does not exist on the node, it's an author error
-		if (!isset(self::$data['#node']->$field_name)) {
-            return self::error("$field_name not found");
-        }
-
-        // if this field is not found rendered, it's probably that
-        // this field should not display in this view mode, so remove the token.
-		if (!isset(self::$data[$field_name])) {
-            return '';
-        }
-
-        if (isset($matches[2]) && $matches[2]) $delta=$matches[2]-1;
-        else $delta = 0;
-
-		$field = & self::$data[$field_name][$delta];
-		if (!isset($field)) {
-            // delta not found is a author error
-            $ord = ($delta==0 ? "1st" : ($delta==1 ? "2nd" : ($delta==2 ? "3rd" : ($delta+1) . "th")));
-			return self::error("$ord $field_name not found");
-        }
-
-		// insert the field and remove it.
-		$markup = $field['#markup'];
-		$field['#markup'] = '';
-		return $markup;
-	}
-
-    /** Error as message and as inline field output if user has permission
-     */
-    static protected function error($message)
-    {
-        if (user_access('see get_in_line errors')) {
-            drupal_set_message($message,'error');
-			return "<div style='background-color:red;padding:8px;' >$message</div>";
-        }
-        // without that permission, just hide the field.
-        return '';
+    // if this field does not exist on the node, it's an author error
+    if (!isset(self::$data['#node']->$field_name)) {
+      return self::error("$field_name not found");
     }
+
+    // if this field is not found rendered, it's probably that
+    // this field should not display in this view mode, so remove the token.
+    if (!isset(self::$data[$field_name])) {
+      return '';
+    }
+
+    if (isset($matches[2]) && $matches[2]) $delta=$matches[2]-1;
+    else $delta = 0;
+
+    $field = & self::$data[$field_name][$delta];
+    if (!isset($field)) {
+      // delta not found is a author error
+      $ord = ($delta==0 ? "1st" : ($delta==1 ? "2nd" : ($delta==2 ? "3rd" : ($delta+1) . "th")));
+      return self::error("$ord $field_name not found");
+    }
+
+    // insert the field and remove it.
+    $markup = $field['#markup'];
+    $field['#markup'] = '';
+    return $markup;
+  }
+
+  /** Error as message and as inline field output if user has permission
+   */
+  static protected function error($message)
+  {
+    if (user_access('see get_in_line errors')) {
+      drupal_set_message($message,'error');
+      return "<div style='background-color:red;padding:8px;' >$message</div>";
+    }
+    // without that permission, just hide the field.
+    return '';
+  }
 }/*}}}*/
